@@ -7,6 +7,9 @@ import (
 	"io"
 	"net/http"
 	"time"
+
+	"github.com/ravibhagw/xbs_adv_stats_job/dal"
+	"github.com/ravibhagw/xbs_adv_stats_job/models"
 )
 
 var teamIdMap = map[string]int{
@@ -23,15 +26,27 @@ var teamIdMap = map[string]int{
 
 func main() {
 
-	matches := make([]Match, 0)
+	matches := make([]models.Match, 0)
 	for _, clubID := range teamIdMap {
-		matches.Add(fetchClubMatches(clubID))
+		var foundMatches, err = fetchClubMatches(clubID)
+		if err != nil {
+			panic(err)
+		}
+		matches = append(matches, foundMatches...)
 	}
+
+	connStr := "lel"
+	client, err := dal.NewClient(connStr)
+	if err != nil {
+		panic(err)
+	}
+
+	client.SaveMatches(matches)
 
 	fmt.Printf("done")
 }
 
-func fetchClubMatches(clubID int) ([]Match, error) {
+func fetchClubMatches(clubID int) ([]models.Match, error) {
 	url := "https://proclubs.ea.com/api/nhl/clubs/matches?matchType=gameType5&platform=common-gen5&clubIds=" + fmt.Sprint(clubID)
 
 	// Create an HTTP client with a timeout of 10 seconds
@@ -67,7 +82,7 @@ func fetchClubMatches(clubID int) ([]Match, error) {
 	}
 
 	// Unmarshal the JSON response into a slice of Root structs
-	var data []Match
+	var data []models.Match
 	if err := json.NewDecoder(bytes.NewReader(body)).Decode(&data); err != nil {
 		return nil, err
 	}
